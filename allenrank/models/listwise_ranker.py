@@ -17,15 +17,14 @@ from allenrank.training.metrics import NDCG, MRR
 import torchsnooper
 
 
-@Model.register("ranker")
-class DocumentRanker(Model):
+@Model.register("listwise_ranker")
+class ListwiseDocumentRanker(Model):
     def __init__(
         self,
         vocab: Vocabulary,
         text_field_embedder: TextFieldEmbedder,
         relevance_matcher: RelevanceMatcher,
-        dropout: float = None,
-        num_labels: int = None,
+        dropout: float = 0.,
         initializer: InitializerApplicator = InitializerApplicator(),
         **kwargs,
     ) -> None:
@@ -34,7 +33,7 @@ class DocumentRanker(Model):
         self._text_field_embedder = text_field_embedder
         self._relevance_matcher = TimeDistributed(relevance_matcher)
 
-        self._dropout = dropout and torch.nn.Dropout(dropout)
+        self._dropout = torch.nn.Dropout(dropout)
 
         self._auc = Auc()
         self._mrr = MRR(padding_value=-1)
@@ -43,28 +42,27 @@ class DocumentRanker(Model):
         self._loss = torch.nn.MSELoss(reduction='none')
         initializer(self)
 
-    # @torchsnooper.snoop()
     def forward(  # type: ignore
-        self, 
-        tokens: TextFieldTensors, # batch * words
-        options: TextFieldTensors, # batch * num_options * words
-        labels: torch.IntTensor = None # batch * num_options
+        self,
+        query: TextFieldTensors, # batch * words
+        documents: TextFieldTensors, # batch * num_documents * words
+        labels: torch.IntTensor = None # batch * num_documents
     ) -> Dict[str, torch.Tensor]:
-        embedded_text = self._text_field_embedder(tokens)
-        mask = get_text_field_mask(tokens).long()
+        embedded_text = self._text_field_embedder(query)
+        mask = get_text_field_mask(query).long()
 
-        embedded_options = self._text_field_embedder(options, num_wrapping_dims=1) # options_mask.dim() - 2
-        options_mask = get_text_field_mask(options).long()
+        embedded_documents = self._text_field_embedder(documents, num_wrapping_dims=1)
+        documents_mask = get_text_field_mask(documents).long()
 
         if self._dropout:
             embedded_text = self._dropout(embedded_text)
-            embedded_options = self._dropout(embedded_options)
+            embedded_documents = self._dropout(embedded_documents)
 
         """
         This isn't exactly a 'hack', but it's definitely not the most efficient way to do it.
         Our matcher expects a single (query, document) pair, but we have (query, [d_0, ..., d_n]).
         To get around this, we expand the query embeddings to create these pairs, and then
-        flatten both into the 3D tensor [batch*num_options, words, dim] expected by the matcher. 
+        flatten both into the 3D tensor [batch*num_documents, words, dim] expected by the matcher. 
         The expansion does this:
 
         [
@@ -81,14 +79,14 @@ class DocumentRanker(Model):
         to rewrite the matrix multiplications in the relevance matchers, but this is a more general solution.
         """
 
-        embedded_text = embedded_text.unsqueeze(1).expand(-1, embedded_options.size(1), -1, -1) # [batch, num_options, words, dim]
-        mask = mask.unsqueeze(1).expand(-1, embedded_options.size(1), -1)
+        embedded_text = embedded_text.unsqueeze(1).expand(-1, embedded_documents.size(1), -1, -1) # [batch, num_documents, words, dim]
+        mask = mask.unsqueeze(1).expand(-1, embedded_documents.size(1), -1)
         
-        scores = self._relevance_matcher(embedded_text, embedded_options, mask, options_mask).squeeze(-1)
+        scores = self._relevance_matcher(embedded_text, embedded_documents, mask, documents_mask).squeeze(-1)
         probs = torch.sigmoid(scores)
 
         output_dict = {"logits": scores, "probs": probs}
-        output_dict["token_ids"] = util.get_token_ids_from_text_field_tensors(tokens)
+        output_dict["token_ids"] = util.get_token_ids_from_text_field_tensors(query)
         if labels is not None:
             label_mask = (labels != -1)
             
@@ -119,5 +117,3 @@ class DocumentRanker(Model):
             "ndcg": self._ndcg.get_metric(reset),
         }
         return metrics
-
-    default_predictor = "document_ranker"

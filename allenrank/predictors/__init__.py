@@ -1,1 +1,2 @@
-from allenrank.predictors.paper_classifier_predictor import PaperClassifierPredictor
+from allenrank.predictors.retrieval_predictor import BaseRetrievalPredictor
+from allenrank.predictors.embedding_predictor import EmbeddingPredictor
