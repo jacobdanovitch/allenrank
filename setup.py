@@ -14,8 +14,10 @@ DESCRIPTION = 'Document ranking with AllenNLP.'
 LONG_DESCRIPTION = (HERE / "README.md").read_text()
 LONG_DESC_TYPE = "text/markdown"
 
-INSTALL_REQUIRES = [
-]
+with open(HERE / 'requirements.txt') as f:
+    INSTALL_REQUIRES = f.read().split('\n')
+
+print(INSTALL_REQUIRES)
 
 setup(
     name=PACKAGE_NAME,

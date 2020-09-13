@@ -6,5 +6,5 @@ __pycache__/
 .vscode/
 .logs/
 env/
-batch.sh
 notebooks/
+*.egg-info

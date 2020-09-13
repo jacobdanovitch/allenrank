@@ -46,7 +46,8 @@ class ListwiseDocumentRanker(Model):
         self,
         query: TextFieldTensors, # batch * words
         documents: TextFieldTensors, # batch * num_documents * words
-        labels: torch.IntTensor = None # batch * num_documents
+        labels: torch.IntTensor = None, # batch * num_documents,
+        **kwargs
     ) -> Dict[str, torch.Tensor]:
         embedded_text = self._text_field_embedder(query)
         mask = get_text_field_mask(query).long()
@@ -102,6 +103,7 @@ class ListwiseDocumentRanker(Model):
             loss = self._loss(probs, labels)
             output_dict["loss"] = loss.masked_fill(~label_mask, 0).sum() / label_mask.sum()
 
+        output_dict.update(kwargs)
         return output_dict
 
     @overrides

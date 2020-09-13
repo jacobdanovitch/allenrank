@@ -3,7 +3,7 @@ from overrides import overrides
 
 from allennlp.common.file_utils import cached_path
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
-from allenrank.dataset_readers import PairwiseRankingReader
+from allenrank.dataset_readers import ListwiseRankingReader
 
 import pandas as pd
 import numpy as np
@@ -12,7 +12,7 @@ import logging
 logger = logging.getLogger(__name__)
 
 @DatasetReader.register("mimics")
-class MIMICSDatasetReader(PairwiseRankingReader):
+class MIMICSDatasetReader(ListwiseRankingReader):
     @overrides
     def _read(self, file_path: str):
         df = read_df(file_path).rename(columns={'options': 'documents'})
