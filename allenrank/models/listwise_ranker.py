@@ -10,6 +10,7 @@ from allennlp.nn import InitializerApplicator, util
 from allennlp.nn.util import get_text_field_mask
 from allennlp.training.metrics import CategoricalAccuracy, BooleanAccuracy, Auc, F1Measure, FBetaMeasure, PearsonCorrelation
 
+from allenrank.models.document_ranker import DocumentRanker
 from allenrank.modules.relevance.base import RelevanceMatcher
 from allenrank.training.metrics.multilabel_f1 import MultiLabelF1Measure
 from allenrank.training.metrics import NDCG, MRR
@@ -18,30 +19,22 @@ import torchsnooper
 
 
 @Model.register("listwise_ranker")
-class ListwiseDocumentRanker(Model):
+class ListwiseDocumentRanker(DocumentRanker):
     def __init__(
         self,
         vocab: Vocabulary,
         text_field_embedder: TextFieldEmbedder,
         relevance_matcher: RelevanceMatcher,
-        dropout: float = 0.,
-        initializer: InitializerApplicator = InitializerApplicator(),
-        **kwargs,
+        **kwargs
     ) -> None:
+        super().__init__(vocab, text_field_embedder, TimeDistributed(relevance_matcher), **kwargs)
 
-        super().__init__(vocab, **kwargs)
-        self._text_field_embedder = text_field_embedder
-        self._relevance_matcher = TimeDistributed(relevance_matcher)
+        self._loss = torch.nn.MSELoss(reduction='none')
 
-        self._dropout = torch.nn.Dropout(dropout)
-
-        self._auc = Auc()
         self._mrr = MRR(padding_value=-1)
         self._ndcg = NDCG(padding_value=-1)
-        
-        self._loss = torch.nn.MSELoss(reduction='none')
-        initializer(self)
 
+    @overrides
     def forward(  # type: ignore
         self,
         query: TextFieldTensors, # batch * words
@@ -107,11 +100,6 @@ class ListwiseDocumentRanker(Model):
         return output_dict
 
     @overrides
-    def make_output_human_readable(
-        self, output_dict: Dict[str, torch.Tensor]
-    ) -> Dict[str, torch.Tensor]:
-        return output_dict
-
     def get_metrics(self, reset: bool = False) -> Dict[str, float]:
         metrics = {
             "auc": self._auc.get_metric(reset),
