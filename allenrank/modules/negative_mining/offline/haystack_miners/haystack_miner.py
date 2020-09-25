@@ -13,68 +13,46 @@ from allenrank.modules.negative_mining.offline.haystack_miners.retriever import 
 class HaystackMiner(OfflineNegativeMiner):
     def __init__(
         self, 
-        document_store: HaystackDocumentStore = None,
-        retriever: Lazy[HaystackRetriever] = None,
+        document_store: HaystackDocumentStore,
+        retriever: Lazy[HaystackRetriever],
+        rebuild_index: bool = False, 
         bash_command: Union[str, List[str]] = None
     ):
+        if rebuild_index:
+            document_store.delete_all_documents(document_store.index)
+
         self.document_store = document_store
-        self.document_store.delete_all_documents()
         self.retriever = retriever
-        self._query_fn = None
+        # self._query_fn = None
 
         if bash_command is not None:
             _exec_command(bash_command)
-    
-    def _set_query_function(self):
-        query_fn = getattr(self.document_store, 'query', None)
-        if query_fn is None:
-            retriever_fn = self.retriever and self.retriever.retrieve
-            if retriever_fn:
-                self._query_fn = retriever_fn
-                return
-            
-            self._query_fn = getattr(self.document_store, 'query_by_embedding', None)
-            assert self._query_fn is not None, f"Unable to find query function on {type(self.document_store).__name__}"
-            return
-        
-        self._query_fn = query_fn
 
     def retrieve(self, document: Union[str, Dict[str, str]], top_k: int = 10, **kwargs) -> List[str]:
         if not self.initialized:
             raise RuntimeError("Miner is not yet initialized. Try calling `miner.write_documents` to add documents before retrieval.")
-
-        if not getattr(self.document_store, '_automatic_deduplication', False):
-            top_k = top_k+1
-
         
-        results = [r.text for r in self._query_fn(document, top_k=top_k, **kwargs) if r.text != document]
-        assert len(results) <= top_k
-
-        return results
+        results = [r.text for r in self.retriever.retrieve(document, top_k=top_k+1, **kwargs) if r.text != document]
+        return results[:top_k]
         
     def write_documents(self, documents: Union[List[str], Dict[str, any], pd.Series], **kwargs) -> None:
-        if isinstance(documents, (pd.Series, pd.DataFrame)):
+        if isinstance(documents[0], dict):
+            assert all(isinstance(d, dict) for d in documents), "Some documents were passed as dictionaries but not others."
+        elif isinstance(documents, (pd.Series, pd.DataFrame)):
             documents = documents.drop_duplicates()
             apply_kwargs = dict(axis=1) if isinstance(documents, pd.DataFrame) else {}
             documents = documents.apply(self._document_to_dict, **apply_kwargs).values.to_list()
-        elif isinstance(documents[0], dict):
-            pass
         else:
             documents = self.documents_to_dicts(documents)
 
-        # documents = set(documents)
-        documents = [Document(text=d['text'], id=str(d['id'])) for d in documents]
-        # all_ids = [d.id for d in documents]
-        # assert len(all_ids) == len(set(all_ids))
+        # documents = [Document(text=d['text'], id=str(d['id'])) for d in documents]
         
         self.document_store.write_documents(documents, **kwargs)
         self.retriever = self.retriever.construct(document_store=self.document_store)
-        # raise ValueError(elf.retriever)
-        self._set_query_function()
 
     @property
     def initialized(self):
-        return self._query_fn is not None
+        return not isinstance(self.retriever, Lazy)
 
 
 

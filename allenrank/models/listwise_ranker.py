@@ -81,6 +81,7 @@ class ListwiseDocumentRanker(DocumentRanker):
         output_dict = {"logits": scores, "probs": probs}
         if labels is not None:
             label_mask = (labels != -1)
+            output_dict["loss"] = self._letor(probs, labels, label_mask)
             
             self._mrr(probs, labels, label_mask)
             self._ndcg(probs, labels, label_mask)
@@ -94,9 +95,6 @@ class ListwiseDocumentRanker(DocumentRanker):
             # F.one_hot(probs.ge(0.5).long(), num_classes=2)
             mc = torch.stack([1-probs, probs], dim=-1)
             self._f1(mc, labels.ge(0.5).long(), label_mask)
-            
-            loss = self._loss(probs, labels)
-            output_dict["loss"] = loss.masked_fill(~label_mask, 0).sum() / label_mask.sum()
 
         output_dict.update(kwargs)
         return output_dict

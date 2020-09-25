@@ -11,6 +11,7 @@ from allennlp.nn.util import get_text_field_mask
 from allennlp.training.metrics import CategoricalAccuracy, BooleanAccuracy, Auc, F1Measure, FBetaMeasure, PearsonCorrelation
 
 from allenrank.modules.relevance.base import RelevanceMatcher
+from allenrank.modules.letor.letor_base import LearningToRankLayer
 from allenrank.training.metrics.multilabel_f1 import MultiLabelF1Measure
 from allenrank.training.metrics import NDCG, MRR
 
@@ -22,6 +23,7 @@ class DocumentRanker(Model):
         vocab: Vocabulary,
         text_field_embedder: TextFieldEmbedder,
         relevance_matcher: RelevanceMatcher,
+        learning_to_rank: LearningToRankLayer = None,
         dropout: float = 0.,
         initializer: InitializerApplicator = InitializerApplicator(),
         **kwargs,
@@ -30,6 +32,7 @@ class DocumentRanker(Model):
         super().__init__(vocab, **kwargs)
         self._text_field_embedder = text_field_embedder
         self._relevance_matcher = relevance_matcher
+        self._letor = learning_to_rank
 
         self._dropout = torch.nn.Dropout(dropout)
 

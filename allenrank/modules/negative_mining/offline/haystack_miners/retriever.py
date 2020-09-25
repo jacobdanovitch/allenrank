@@ -12,25 +12,25 @@ from haystack.retriever.dense import EmbeddingRetriever, DensePassageRetriever
 from allenrank.modules.negative_mining.offline.haystack_miners.document_store import HaystackDocumentStore
 
 class HaystackRetriever(Registrable):
-    # @classmethod
-    # def from_partial_objects(
-    #     cls,
-    #     document_store: HaystackDocumentStore,
-    #     **kwargs
-    # ):
-    #     document_store = document_store.construct()
-    #     return cls(document_store=document_store, **kwargs)
-    @staticmethod
-    def default(document_store: HaystackDocumentStore) -> "HaystackRetriever":
-        return HaystackRetriever.from_params(document_store=document_store, params=Params({}))
-        
+    pass
 
+
+# Can't just do HaystackRetriever.register('tfidf')(TfidfRetriever);
+# Lazy[T] can't accept positionals which the retriever classes require,
+# but somehow inheriting from both fixes that      
 @HaystackRetriever.register('tfidf')
 class HaystackTfIdfRetriever(HaystackRetriever, TfidfRetriever):
-    def __init__(self, document_store: HaystackDocumentStore):
-        super().__init__(document_store=document_store)
+    pass
+
+@HaystackRetriever.register('es')
+class HaystackElasticsearchRetriever(HaystackRetriever, ElasticsearchRetriever):
+    pass
 
 
-HaystackRetriever.register('es')(ElasticsearchRetriever)
-HaystackRetriever.register('embedding')(EmbeddingRetriever)
-HaystackRetriever.register('dpr')(DensePassageRetriever)
+@HaystackRetriever.register('embedding')
+class HaystackEmbeddingRetriever(HaystackRetriever, EmbeddingRetriever):
+    pass
+
+@HaystackRetriever.register('dpr')
+class HaystackDensePassageRetriever(HaystackRetriever, DensePassageRetriever):
+    pass

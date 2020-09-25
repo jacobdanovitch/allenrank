@@ -26,7 +26,7 @@ class OfflineNegativeMiner(NegativeMiner):
         return dict(d)
     
     def documents_to_dicts(self, documents: List[str], key: str = 'text') -> List[Dict[str, str]]:
-        return [self._document_to_dict(d) for d in set(documents)]
+        return [self._document_to_dict(d) for d in documents]
 
 
 class OfflineMinerMixin:
@@ -44,9 +44,11 @@ class OfflineMinerMixin:
         top_k = top_k or self._top_k
         return self._miner.retrieve(document, top_k=top_k, **kwargs)
         
-    def write_documents(self, documents: Union[List[str], List[Dict[str, str]]], with_ids: bool = False, **kwargs) -> Optional[Dict[str, int]]:
+    def write_documents(self, documents: List[str], with_ids: bool = False, **kwargs) -> Optional[Dict[str, int]]:
         if self._max_documents_to_index:
             documents = documents[:self._max_documents_to_index]
+
+        documents = list(set(documents))
             
         document_index = None
         if with_ids:
