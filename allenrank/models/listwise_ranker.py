@@ -1,14 +1,16 @@
 from typing import Dict, Optional
-
 from overrides import overrides
+
 import torch
+import torch.nn as nn
+from torch.nn import functional as F
 
 from allennlp.data import TextFieldTensors, Vocabulary
 from allennlp.models.model import Model
 from allennlp.modules import FeedForward, Seq2SeqEncoder, Seq2VecEncoder, TextFieldEmbedder, TimeDistributed
 from allennlp.nn import InitializerApplicator, util
 from allennlp.nn.util import get_text_field_mask
-from allennlp.training.metrics import CategoricalAccuracy, BooleanAccuracy, Auc, F1Measure, FBetaMeasure, PearsonCorrelation
+from allennlp.training.metrics import CategoricalAccuracy, BooleanAccuracy, Auc, F1Measure, PearsonCorrelation
 
 from allenrank.models.document_ranker import DocumentRanker
 from allenrank.modules.relevance.base import RelevanceMatcher
@@ -42,14 +44,11 @@ class ListwiseDocumentRanker(DocumentRanker):
         labels: torch.IntTensor = None, # batch * num_documents,
         **kwargs
     ) -> Dict[str, torch.Tensor]:
-        embedded_text = self._text_field_embedder(query)
-        mask = get_text_field_mask(query).long()
-
-        embedded_documents = self._text_field_embedder(documents, num_wrapping_dims=1)
-        documents_mask = get_text_field_mask(documents).long()
+        embedded_query, query_mask = self._embed_and_mask(query)
+        embedded_documents, documents_mask = self._embed_and_mask(documents)
 
         if self._dropout:
-            embedded_text = self._dropout(embedded_text)
+            embedded_query = self._dropout(embedded_query)
             embedded_documents = self._dropout(embedded_documents)
 
         """
@@ -73,14 +72,13 @@ class ListwiseDocumentRanker(DocumentRanker):
         to rewrite the matrix multiplications in the relevance matchers, but this is a more general solution.
         """
 
-        embedded_text = embedded_text.unsqueeze(1).expand(-1, embedded_documents.size(1), -1, -1) # [batch, num_documents, words, dim]
-        mask = mask.unsqueeze(1).expand(-1, embedded_documents.size(1), -1)
+        embedded_query = embedded_query.unsqueeze(1).expand(-1, embedded_documents.size(1), -1, -1) # [batch, num_documents, words, dim]
+        query_mask = query_mask.unsqueeze(1).expand(-1, embedded_documents.size(1), -1)
         
-        scores = self._relevance_matcher(embedded_text, embedded_documents, mask, documents_mask).squeeze(-1)
+        scores = self._relevance_matcher(embedded_query, embedded_documents, query_mask, documents_mask).squeeze(-1)
         probs = torch.sigmoid(scores)
 
         output_dict = {"logits": scores, "probs": probs}
-        output_dict["token_ids"] = util.get_token_ids_from_text_field_tensors(query)
         if labels is not None:
             label_mask = (labels != -1)
             
@@ -92,6 +90,10 @@ class ListwiseDocumentRanker(DocumentRanker):
             label_mask = label_mask.view(-1)
             
             self._auc(probs, labels.ge(0.5).long(), label_mask)
+
+            # F.one_hot(probs.ge(0.5).long(), num_classes=2)
+            mc = torch.stack([1-probs, probs], dim=-1)
+            self._f1(mc, labels.ge(0.5).long(), label_mask)
             
             loss = self._loss(probs, labels)
             output_dict["loss"] = loss.masked_fill(~label_mask, 0).sum() / label_mask.sum()
@@ -105,5 +107,6 @@ class ListwiseDocumentRanker(DocumentRanker):
             "auc": self._auc.get_metric(reset),
             "mrr": self._mrr.get_metric(reset),
             "ndcg": self._ndcg.get_metric(reset),
+            **self._f1.get_metric(reset)
         }
         return metrics

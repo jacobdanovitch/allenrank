@@ -33,7 +33,7 @@ class RankingMetric(Metric):
         
         if mask is None:
             mask = torch.ones_like(gold_labels).bool()
-        
+
         self._all_predictions.append(predictions.detach().cpu())
         self._all_gold_labels.append(gold_labels.detach().cpu()) 
         self._all_masks.append(mask.detach().cpu())

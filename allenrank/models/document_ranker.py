@@ -34,8 +34,19 @@ class DocumentRanker(Model):
         self._dropout = torch.nn.Dropout(dropout)
 
         self._auc = Auc()
+        self._f1 = F1Measure(positive_label=1)
         
         initializer(self)
+
+    def _embed_and_mask(self, source_tokens: TextFieldTensors):
+        if source_tokens is None:
+            return None, None
+        
+        token_ids = util.get_token_ids_from_text_field_tensors(source_tokens)
+        source_mask = util.get_text_field_mask(source_tokens, num_wrapping_dims=token_ids.dim()-2)
+        embedded_input = self._text_field_embedder(source_tokens, num_wrapping_dims=token_ids.dim()-2)
+
+        return embedded_input, source_mask
 
     @overrides
     def make_output_human_readable(

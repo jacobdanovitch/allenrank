@@ -8,7 +8,6 @@ from allennlp.training.metrics.metric import Metric
 from allenrank.training.metrics.ranking_metric import RankingMetric
 
 import torchsnooper
-import sys; sys.tracebacklimit = 0
 
 @Metric.register("mrr")
 class MRR(RankingMetric):
@@ -47,7 +46,7 @@ def mrr(y_pred, y_true, mask):
     ordered_truth = binarized_y_true.gather(-1, rank)
 
     # Ordered indices: [1, 2, ..., batch_size]
-    indices = torch.arange(1, binarized_y_true.size(-1) + 1).view_as(y_pred).type_as(y_pred)
+    indices = torch.arange(1, binarized_y_true.size(-1) + 1).expand_as(y_pred).type_as(y_pred)
 
     # Calculate the reciprocal rank for each position, 0ing-out masked values.
     # Following above example, `_mrr = [0/1, 1/2 ,0/3] = [0, 0.5, 0]`.
