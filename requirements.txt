@@ -3,6 +3,7 @@ allennlp-models
 torchsnooper
 
 pandas
+diskcache
 
 pytest-pythonpath
 

@@ -3,5 +3,6 @@ from allenrank.modules.relevance import (
     bert_cls,
     cosine,
     knrm,
-    match_pyramid
+    match_pyramid,
+    tk
 )

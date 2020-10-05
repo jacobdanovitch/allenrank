@@ -16,28 +16,26 @@ class GaussianKernel(KernelFunction):
     ):
         super().__init__()
         
-        # static - kernel size & magnitude variables
         self.register_buffer('mu', self.kernel_mus(n_kernels).view(1, 1, 1, n_kernels))
         self.register_buffer('sigma', self.kernel_sigmas(n_kernels).view(1, 1, 1, n_kernels))
 
-        # this does not really do "attention" - just a plain cosine matrix calculation (without learnable weights) 
         self.cosine_module = CosineMatrixAttention()
         
     def forward(
         self, 
         query_embeddings: TextFieldTensors, 
-        candidates_embeddings: TextFieldTensors,
+        document_embeddings: TextFieldTensors,
         query_mask: torch.Tensor = None,
-        candidates_mask: torch.Tensor = None
+        document_mask: torch.Tensor = None
     ):
-        mask = query_mask.unsqueeze(-1).float() @ candidates_mask.unsqueeze(-1).transpose(-1, -2).float()
+        mask = query_mask.unsqueeze(-1).float() @ document_mask.unsqueeze(-1).transpose(-1, -2).float()
         
         #
         # cosine matrix
         # -------------------------------------------------------
         
         # shape: (batch, query_max, doc_max)
-        cosine_matrix = (self.cosine_module(query_embeddings, candidates_embeddings) * mask).unsqueeze(-1)
+        cosine_matrix = (self.cosine_module(query_embeddings, document_embeddings) * mask).unsqueeze(-1)
         
         #
         # gaussian kernels & soft-TF

@@ -38,10 +38,12 @@ class PairwiseDocumentRanker(DocumentRanker):
             embedded_query = self._dropout(embedded_query)
             embedded_document = self._dropout(embedded_document)
         
-        scores = self._relevance_matcher(embedded_query, embedded_document, query_mask, document_mask).squeeze(-1)
+        scores = self._relevance_matcher(embedded_query, embedded_document, query_mask, document_mask)
+        if scores.dim() > 1:
+            scores = scores.squeeze(-1)
         probs = torch.sigmoid(scores)
 
-        output_dict = {"logits": scores, "probs": probs}
+        output_dict = {"logits": scores, "scores": probs}
         output_dict["token_ids"] = util.get_token_ids_from_text_field_tensors(query)
         if label is not None:
             probs = probs.view(-1)

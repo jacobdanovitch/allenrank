@@ -15,7 +15,9 @@ from allennlp.training.metrics import CategoricalAccuracy, BooleanAccuracy, Auc,
 from allenrank.models.document_ranker import DocumentRanker
 from allenrank.modules.relevance.base import RelevanceMatcher
 from allenrank.training.metrics.multilabel_f1 import MultiLabelF1Measure
-from allenrank.training.metrics import NDCG, MRR
+from allenrank.training.metrics import MRR, NDCG
+from allenrank.training.metrics.ndcg import SKLearnNDCG
+from allenrank.training.metrics.mrr import SKLearnMRR
 
 import torchsnooper
 
@@ -78,10 +80,10 @@ class ListwiseDocumentRanker(DocumentRanker):
         scores = self._relevance_matcher(embedded_query, embedded_documents, query_mask, documents_mask).squeeze(-1)
         probs = torch.sigmoid(scores)
 
-        output_dict = {"logits": scores, "probs": probs}
+        output_dict = {"logits": scores, "scores": probs}
         if labels is not None:
             label_mask = (labels != -1)
-            output_dict["loss"] = self._letor(probs, labels, label_mask)
+            output_dict["loss"] = self._letor(probs, labels, label_mask) # + self._relevance_matcher._module.get_sparsity_loss() # delete
             
             self._mrr(probs, labels, label_mask)
             self._ndcg(probs, labels, label_mask)
@@ -92,12 +94,21 @@ class ListwiseDocumentRanker(DocumentRanker):
             
             self._auc(probs, labels.ge(0.5).long(), label_mask)
 
-            # F.one_hot(probs.ge(0.5).long(), num_classes=2)
-            mc = torch.stack([1-probs, probs], dim=-1)
-            self._f1(mc, labels.ge(0.5).long(), label_mask)
+            multi_class = torch.stack([1-probs, probs], dim=-1)
+            self._f1(multi_class, labels.ge(0.5).long(), label_mask)
 
         output_dict.update(kwargs)
         return output_dict
+
+    def embed(self, query: TextFieldTensors = None, document: TextFieldTensors = None, **kwargs):
+        prefix = 'query' if query else 'document'
+        matcher = self._relevance_matcher._module
+        encoder = getattr(matcher, '_{}_seq2vec_encoder'.format(prefix))
+
+        embedded, mask = self._embed_and_mask(query or document)
+        encoded = encoder(embedded, mask)
+
+        return {'encoder_embeddings': encoded, **kwargs}
 
     @overrides
     def get_metrics(self, reset: bool = False) -> Dict[str, float]:

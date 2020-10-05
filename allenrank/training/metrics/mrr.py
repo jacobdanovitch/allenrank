@@ -2,21 +2,37 @@ from typing import Optional, List
 
 import numpy as np
 import torch
+from sklearn.metrics import label_ranking_average_precision_score
 
 from allennlp.training.metrics.metric import Metric
-
 from allenrank.training.metrics.ranking_metric import RankingMetric
 
 import torchsnooper
 
+@Metric.register("sk-mrr")
+class SKLearnMRR(RankingMetric):
+    """
+    Sanity check for MRR. Should be moved to unit test.
+    """
+    def get_metric(self, reset: bool = False):
+        num_labels, num_labels_check = self.predictions.size(-1), self.gold_labels.size(-1)
+        assert num_labels == num_labels_check
+        y_pred, y_true = map(lambda x: x.masked_select(self.masks).view(-1, num_labels).numpy(), (self.predictions, self.gold_labels))
+        
+        # https://scikit-learn.org/stable/modules/model_evaluation.html#label-ranking-average-precision
+        # If there is exactly one relevant label per sample, label ranking average precision is equivalent to the mean reciprocal rank.
+        assert (y_true.sum(axis=-1).astype(int) == 1).all(), "Only compatible with one relevant document per instance"
+        # raise ValueError(np.unique(y_true))
+        score = label_ranking_average_precision_score(y_true.astype(int), y_pred, )
+
+        if reset:
+            self.reset()
+        return score
+
 @Metric.register("mrr")
 class MRR(RankingMetric):
     def get_metric(self, reset: bool = False):
-        predictions = torch.cat(self._all_predictions, dim=0)
-        labels = torch.cat(self._all_gold_labels, dim=0)
-        masks = torch.cat(self._all_masks, dim=0)
-        
-        score = mrr(predictions, labels, masks).item()
+        score = mrr(self.predictions, self.gold_labels, self.masks).item()
 
         if reset:
             self.reset()

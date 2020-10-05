@@ -1,6 +1,7 @@
 from typing import Union, List, Dict, Any
-import pandas as pd
+import diskcache as dc
 
+import pandas as pd
 from haystack.schema import Document
 
 from allennlp.common import Lazy
@@ -16,6 +17,7 @@ class HaystackMiner(OfflineNegativeMiner):
         document_store: HaystackDocumentStore,
         retriever: Lazy[HaystackRetriever],
         rebuild_index: bool = False, 
+        cache_path: str = None,
         bash_command: Union[str, List[str]] = None
     ):
         if rebuild_index:
@@ -23,16 +25,25 @@ class HaystackMiner(OfflineNegativeMiner):
 
         self.document_store = document_store
         self.retriever = retriever
-        # self._query_fn = None
+
+        self._cache = cache_path and dc.Cache(cache_path)
 
         if bash_command is not None:
             _exec_command(bash_command)
 
     def retrieve(self, document: Union[str, Dict[str, str]], top_k: int = 10, **kwargs) -> List[str]:
+        if self._cache and document in self._cache:
+            cached = self._cache[document]
+            if len(cached) > top_k:
+                cached = cached[:top_k]
+            return cached
         if not self.initialized:
             raise RuntimeError("Miner is not yet initialized. Try calling `miner.write_documents` to add documents before retrieval.")
         
         results = [r.text for r in self.retriever.retrieve(document, top_k=top_k+1, **kwargs) if r.text != document]
+        results = results[:top_k]
+        if self._cache:
+            self._cache[document] = results
         return results[:top_k]
         
     def write_documents(self, documents: Union[List[str], Dict[str, any], pd.Series], **kwargs) -> None:

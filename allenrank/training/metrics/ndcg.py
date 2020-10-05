@@ -5,9 +5,9 @@ from typing import Optional, List
 
 import numpy as np
 import torch
+from sklearn.metrics import ndcg_score
 
 from allennlp.training.metrics.metric import Metric
-
 from allenrank.training.metrics.ranking_metric import RankingMetric
 
 import torchsnooper
@@ -39,6 +39,20 @@ class NDCG(RankingMetric):
             self.reset()
         return score
 
+@Metric.register("sk-ndcg")
+class SKLearnNDCG(RankingMetric):
+    """
+    Sanity check for NDCG. Should be moved to unit test.
+    """
+    def get_metric(self, reset: bool = False):
+        num_labels, num_labels_check = self.predictions.size(-1), self.gold_labels.size(-1)
+        assert num_labels == num_labels_check
+        y_pred, y_true = map(lambda x: x.masked_select(self.masks).view(-1, num_labels).numpy(), (self.predictions, self.gold_labels))
+        score = ndcg_score(y_true, y_pred) # .mean()
+
+        if reset:
+            self.reset()
+        return score
 
 def ndcg(y_pred, y_true, ats=None, gain_function=lambda x: torch.pow(2, x) - 1, padding_indicator=-1):
     """

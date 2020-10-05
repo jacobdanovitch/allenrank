@@ -19,7 +19,7 @@ class CosineSimilarityMatcher(RelevanceMatcher):
         query_seq2vec_encoder: Seq2VecEncoder,
         document_seq2vec_encoder: Seq2VecEncoder = None,
     ):
-        super().__init__()#input_dim=query_seq2vec_encoder.get_input_dim())
+        super().__init__()
         self._query_seq2vec_encoder = query_seq2vec_encoder
         self._document_seq2vec_encoder = document_seq2vec_encoder or query_seq2vec_encoder
 

@@ -29,17 +29,17 @@ class KNRM(RelevanceMatcher):
     def forward(
         self, 
         query_embeddings: TextFieldTensors, 
-        candidates_embeddings: TextFieldTensors,
+        document_embeddings: TextFieldTensors,
         query_mask: torch.Tensor = None,
-        candidates_mask: torch.Tensor = None,
+        document_mask: torch.Tensor = None,
     ) -> torch.Tensor:
         kernel_output = self._kernel(
             query_embeddings,
-            candidates_embeddings,
+            document_embeddings,
             query_mask,
-            candidates_mask
+            document_mask
         )
         
         score = self.dense(kernel_output)
-        score = torch.squeeze(score,1)
+        score = torch.squeeze(score, 1)
         return score

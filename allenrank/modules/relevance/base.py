@@ -23,8 +23,8 @@ class RelevanceMatcher(Registrable, nn.Module):
     def forward(
         self, 
         query_embeddings: TextFieldTensors, 
-        candidates_embeddings: TextFieldTensors,
+        document_embeddings: TextFieldTensors,
         query_mask: torch.Tensor = None,
-        candidates_mask: torch.Tensor = None
+        document_mask: torch.Tensor = None
     ):
         raise NotImplementedError()
