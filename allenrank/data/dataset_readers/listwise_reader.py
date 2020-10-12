@@ -7,7 +7,7 @@ import pandas as pd
 from allennlp.data.fields import ArrayField, MetadataField, ListField
 from allennlp.data.instance import Instance
 
-from allenrank.dataset_readers.ir_reader import IRDatasetReader
+from allenrank.data.dataset_readers.ir_reader import IRDatasetReader
 
 class ListwiseRankingReader(IRDatasetReader):
     @overrides

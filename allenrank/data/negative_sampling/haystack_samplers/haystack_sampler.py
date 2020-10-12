@@ -6,12 +6,12 @@ from haystack.schema import Document
 
 from allennlp.common import Lazy
 
-from allenrank.modules.negative_mining.offline.offline_miner import OfflineNegativeMiner
-from allenrank.modules.negative_mining.offline.haystack_miners.document_store import HaystackDocumentStore
-from allenrank.modules.negative_mining.offline.haystack_miners.retriever import HaystackRetriever
+from allenrank.data.negative_sampling.negative_sampler import NegativeSampler
+from allenrank.data.negative_sampling.haystack_samplers.retriever import HaystackRetriever
+from allenrank.data.document_index.haystack_index import HaystackDocumentStore
 
-@OfflineNegativeMiner.register("haystack_miner")
-class HaystackMiner(OfflineNegativeMiner):
+@NegativeSampler.register("haystack_sampler")
+class HaystackSampler(NegativeSampler):
     def __init__(
         self, 
         document_store: HaystackDocumentStore,
@@ -38,7 +38,7 @@ class HaystackMiner(OfflineNegativeMiner):
                 cached = cached[:top_k]
             return cached
         if not self.initialized:
-            raise RuntimeError("Miner is not yet initialized. Try calling `miner.write_documents` to add documents before retrieval.")
+            raise RuntimeError("Sampler is not yet initialized. Try calling `sampler.write_documents` to add documents before retrieval.")
         
         results = [r.text for r in self.retriever.retrieve(document, top_k=top_k+1, **kwargs) if r.text != document]
         results = results[:top_k]

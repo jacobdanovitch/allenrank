@@ -3,7 +3,7 @@ from overrides import overrides
 
 from allennlp.common.file_utils import cached_path
 from allennlp.data.dataset_readers.dataset_reader import DatasetReader
-from allenrank.dataset_readers import ListwiseRankingReader
+from allenrank.data.dataset_readers import ListwiseRankingReader
 
 import pandas as pd
 import numpy as np

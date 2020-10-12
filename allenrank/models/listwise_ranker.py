@@ -16,8 +16,6 @@ from allenrank.models.document_ranker import DocumentRanker
 from allenrank.modules.relevance.base import RelevanceMatcher
 from allenrank.training.metrics.multilabel_f1 import MultiLabelF1Measure
 from allenrank.training.metrics import MRR, NDCG
-from allenrank.training.metrics.ndcg import SKLearnNDCG
-from allenrank.training.metrics.mrr import SKLearnMRR
 
 import torchsnooper
 
@@ -83,7 +81,7 @@ class ListwiseDocumentRanker(DocumentRanker):
         output_dict = {"logits": scores, "scores": probs}
         if labels is not None:
             label_mask = (labels != -1)
-            output_dict["loss"] = self._letor(probs, labels, label_mask) # + self._relevance_matcher._module.get_sparsity_loss() # delete
+            output_dict["loss"] = self._letor(probs, labels, label_mask)
             
             self._mrr(probs, labels, label_mask)
             self._ndcg(probs, labels, label_mask)

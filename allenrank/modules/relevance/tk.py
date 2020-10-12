@@ -138,8 +138,8 @@ class TransformerKernel(RelevanceMatcher):
     ) -> torch.Tensor:
         # pylint: disable=arguments-differ
 
-        query_embeddings_context = self.stacked_att(query_embeddings, query_mask)
-        document_embeddings_context = self.stacked_att(document_embeddings, document_mask)
+        query_embeddings_context = self.stacked_att(query_embeddings, query_mask.bool())
+        document_embeddings_context = self.stacked_att(document_embeddings, document_mask.bool())
 
         # query_embeddings = query_embeddings * query_mask.unsqueeze(-1)
         # document_embeddings = document_embeddings * document_mask.unsqueeze(-1)

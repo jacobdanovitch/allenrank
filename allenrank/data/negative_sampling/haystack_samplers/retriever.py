@@ -9,7 +9,7 @@ from allennlp.common import Params, Registrable
 from haystack.retriever.sparse import TfidfRetriever, ElasticsearchRetriever
 from haystack.retriever.dense import EmbeddingRetriever, DensePassageRetriever
 
-from allenrank.modules.negative_mining.offline.haystack_miners.document_store import HaystackDocumentStore
+from allenrank.data.document_index.haystack_index import HaystackDocumentStore
 
 class HaystackRetriever(Registrable):
     pass

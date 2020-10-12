@@ -12,7 +12,7 @@ def mine_full_batch(x: torch.Tensor):
     negatives = negative_index[..., 1].flatten()
     return x.index_select(0, negatives).view(x.size(0), -1, *x.size()[1:])
 
-def full_batch_negative_miner(func):
+def full_batch_negative_sampler(func):
     def wrapper(query, document, label):
         document_neg = mine_full_batch(document)
         
