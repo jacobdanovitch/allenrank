@@ -18,11 +18,13 @@ from allenrank.training.metrics import NDCG, MRR
 import torchsnooper
 
 class DocumentRanker(Model):
+    _document_input_key: str = 'document'
+    
     def __init__(
         self,
         vocab: Vocabulary,
         text_field_embedder: TextFieldEmbedder,
-        relevance_matcher: RelevanceMatcher,
+        relevance_matcher: RelevanceMatcher = None,
         learning_to_rank: LearningToRankLayer = None,
         dropout: float = 0.,
         initializer: InitializerApplicator = InitializerApplicator(),

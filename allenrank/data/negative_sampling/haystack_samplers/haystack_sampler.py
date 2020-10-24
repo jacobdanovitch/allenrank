@@ -7,7 +7,7 @@ from haystack.schema import Document
 from allennlp.common import Lazy
 
 from allenrank.data.negative_sampling.negative_sampler import NegativeSampler
-from allenrank.data.negative_sampling.haystack_samplers.retriever import HaystackRetriever
+from allenrank.data.retriever.haystack_retriever import HaystackRetriever
 from allenrank.data.document_index.haystack_index import HaystackDocumentStore
 
 @NegativeSampler.register("haystack_sampler")

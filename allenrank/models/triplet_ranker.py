@@ -19,6 +19,8 @@ import torchsnooper
 
 @Model.register("triplet_ranker")
 class TripletDocumentRanker(PairwiseDocumentRanker):
+    _document_input_key: str = 'positive_document'
+
     def __init__(self, margin: float = 1.0, **kwargs):
         super().__init__(**kwargs)
         self._margin = margin
@@ -63,26 +65,28 @@ class TripletDocumentRanker(PairwiseDocumentRanker):
             label = torch.ones(embedded_query.size(0)).to(embedded_query.device)
 
             output_dict["loss"] = F.margin_ranking_loss(pos_scores, neg_scores, label, margin=self._margin)
-
-            preds = (pos_scores - neg_scores).gt(self._margin).long()
-            probs = torch.cat([pos_scores.view(-1, 1), neg_scores.view(-1, 1)], dim=-1) # B x 2
-            self._acc(preds, label.long())
-            # self._f1(probs, label)
-
-            multi_label = torch.stack([label, torch.zeros_like(label)], dim=-1).long() # B x 2
-            self._mrr(probs, multi_label)
-            self._ndcg(probs, multi_label.float())
-
-            probs = probs.view(-1)
-            multi_class = torch.stack([1-probs, probs], dim=-1)
-            multi_label = multi_label.view(-1)
-            # self._auc(probs, multi_label)
-            self._f1(multi_class, multi_label)
+            self._call_metrics(pos_scores, neg_scores, label)
         else:
             output_dict = {"scores": pos_probs}
 
         output_dict.update(kwargs)
         return output_dict
+
+    def _call_metrics(self, pos_scores, neg_scores, label):
+        preds = (pos_scores - neg_scores).gt(self._margin).long()
+        probs = torch.cat([pos_scores.view(-1, 1), neg_scores.view(-1, 1)], dim=-1) # B x 2
+        self._acc(preds.view_as(label), label.long())
+        # self._f1(probs, label)
+
+        multi_label = torch.stack([label, torch.zeros_like(label)], dim=-1).long() # B x 2
+        self._mrr(probs, multi_label)
+        self._ndcg(probs, multi_label.float())
+
+        probs = probs.view(-1)
+        multi_class = torch.stack([1-probs, probs], dim=-1)
+        multi_label = multi_label.view(-1)
+        # self._auc(probs, multi_label)
+        self._f1(multi_class, multi_label)
 
     @overrides
     def get_metrics(self, reset: bool = False) -> Dict[str, float]:
@@ -91,6 +95,6 @@ class TripletDocumentRanker(PairwiseDocumentRanker):
             # "auc": self._auc.get_metric(reset),
             "mrr": self._mrr.get_metric(reset),
             "ndcg": self._ndcg.get_metric(reset),
-            **self._f1.get_metric(reset)
+            # **self._f1.get_metric(reset)
         }
         return metrics

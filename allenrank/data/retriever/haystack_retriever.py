@@ -10,9 +10,11 @@ from haystack.retriever.sparse import TfidfRetriever, ElasticsearchRetriever
 from haystack.retriever.dense import EmbeddingRetriever, DensePassageRetriever
 
 from allenrank.data.document_index.haystack_index import HaystackDocumentStore
+from allenrank.data.retriever.retriever import Retriever
 
-class HaystackRetriever(Registrable):
-    pass
+class HaystackRetriever(Retriever):
+    # pass
+    default_implementation = 'es'
 
 
 # Can't just do HaystackRetriever.register('tfidf')(TfidfRetriever);
