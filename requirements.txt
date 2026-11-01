@@ -7,4 +7,4 @@ pandas
 pytest-pythonpath
 
 # Checks style, syntax, and other useful errors.
-pylint==1.8.1
+pylint==4.0.9
